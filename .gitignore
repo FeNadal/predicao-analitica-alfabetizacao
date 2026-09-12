@@ -1,0 +1,16 @@
+﻿# Ambientes virtuais
+.venv/
+.env/
+env/
+__pycache__/
+*.pyc
+
+# Jupyter Checkpoints
+.ipynb_checkpoints/
+
+# Dados brutos grandes (descomentar se for versionar apenas amostra)
+data/
+
+# IDEs
+.vscode/
+.idea/
