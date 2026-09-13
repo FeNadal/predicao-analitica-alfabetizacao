@@ -1,4 +1,4 @@
-﻿# Dependências do Tech Challenge - Fase 3 (AI Scientist)
+﻿# Dependências do Repositório
 pandas>=2.0.0
 numpy>=1.23.0
 matplotlib>=3.5.0
