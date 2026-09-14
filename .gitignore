@@ -9,7 +9,7 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Dados brutos grandes (descomentar se for versionar apenas amostra)
-data/
+#data/
 
 # IDEs
 .vscode/
