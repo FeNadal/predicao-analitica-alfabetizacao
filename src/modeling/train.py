@@ -4,12 +4,8 @@ Módulo de Treinamento, Otimização e Validação de Modelos Supervisionados
 Tech Challenge - Fase 3 | Pós Tech AI Scientist
 """
 
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path.cwd().parent))
-
 import os
+import sys
 import json
 import joblib
 import numpy as np
@@ -22,6 +18,12 @@ from sklearn.ensemble import (
     HistGradientBoostingClassifier, HistGradientBoostingRegressor
 )
 
+# Garante que a raiz do projeto esteja no sys.path, independente de como
+# o script é chamado (python src/modeling/train.py OU python -m src.modeling.train)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+
 from src.preprocessing.data_loader import load_data
 from src.preprocessing.features import engineer_features, get_feature_names
 from src.preprocessing.pipeline import build_ml_pipeline
@@ -30,26 +32,26 @@ from src.evaluation.metrics import evaluate_classification, evaluate_regression
 def train_and_evaluate_all() -> Dict[str, Any]:
     print("1. Carregando dados da camada Gold...")
     df_raw = load_data()
-    
+
     print("2. Aplicando engenharia de atributos...")
     df_feat = engineer_features(df_raw)
-    
+
     num_cols, cat_cols = get_feature_names()
     feature_cols = num_cols + cat_cols
-    
+
     # Separação temporal estrita: Treino em 2023, Teste em 2024
     df_2023 = df_feat[df_feat["ano"] == 2023].dropna(subset=["taxa_alfabetizacao"]).copy()
     df_2024 = df_feat[df_feat["ano"] == 2024].dropna(subset=["taxa_alfabetizacao"]).copy()
     print(f"   -> Treino (2023): {len(df_2023):,} | Teste (2024): {len(df_2024):,}")
-    
+
     X_train = df_2023[feature_cols]
     y_clf_train = df_2023["target_risco_educacional"]
     y_reg_train = df_2023["target_taxa_alfabetizacao"]
-    
+
     X_test = df_2024[feature_cols]
     y_clf_test = df_2024["target_risco_educacional"]
     y_reg_test = df_2024["target_taxa_alfabetizacao"]
-    
+
     # ----------------------------------------------------
     # CLASSIFICAÇÃO DE RISCO EDUCACIONAL
     # ----------------------------------------------------
@@ -66,13 +68,13 @@ def train_and_evaluate_all() -> Dict[str, Any]:
             max_iter=150, max_depth=6, min_samples_leaf=15, random_state=42
         )
     }
-    
+
     cv_clf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     clf_results = {}
     best_clf_score = -1
     best_clf_name = None
     best_clf_pipe = None
-    
+
     for name, model in clf_models.items():
         pipe = build_ml_pipeline(model, num_cols, cat_cols)
         cv_scores = cross_validate(
@@ -83,7 +85,7 @@ def train_and_evaluate_all() -> Dict[str, Any]:
         y_pred = pipe.predict(X_test)
         y_prob = pipe.predict_proba(X_test)[:, 1] if hasattr(pipe, "predict_proba") else None
         test_eval = evaluate_classification(y_clf_test, y_pred, y_prob)
-        
+
         clf_results[name] = {
             "cv_mean_roc_auc": float(np.mean(cv_scores["test_roc_auc"])),
             "cv_mean_f1": float(np.mean(cv_scores["test_f1"])),
@@ -101,7 +103,7 @@ def train_and_evaluate_all() -> Dict[str, Any]:
             best_clf_score = test_eval["roc_auc"]
             best_clf_name = name
             best_clf_pipe = pipe
-            
+
     # ----------------------------------------------------
     # REGRESSÃO DA TAXA DE ALFABETIZAÇÃO
     # ----------------------------------------------------
@@ -115,13 +117,13 @@ def train_and_evaluate_all() -> Dict[str, Any]:
             max_iter=150, max_depth=6, min_samples_leaf=15, random_state=42
         )
     }
-    
+
     cv_reg = KFold(n_splits=5, shuffle=True, random_state=42)
     reg_results = {}
     best_reg_score = -999
     best_reg_name = None
     best_reg_pipe = None
-    
+
     for name, model in reg_models.items():
         pipe = build_ml_pipeline(model, num_cols, cat_cols)
         cv_scores = cross_validate(
@@ -131,7 +133,7 @@ def train_and_evaluate_all() -> Dict[str, Any]:
         pipe.fit(X_train, y_reg_train)
         y_pred = pipe.predict(X_test)
         test_eval = evaluate_regression(y_reg_test, y_pred)
-        
+
         reg_results[name] = {
             "cv_mean_r2": float(np.mean(cv_scores["test_r2"])),
             "cv_mean_mae": float(-np.mean(cv_scores["test_neg_mean_absolute_error"])),
@@ -146,11 +148,14 @@ def train_and_evaluate_all() -> Dict[str, Any]:
             best_reg_score = test_eval["r2"]
             best_reg_name = name
             best_reg_pipe = pipe
-            
-    os.makedirs("../data/processed", exist_ok=True)
-    joblib.dump(best_clf_pipe, "../data/processed/best_classification_model.joblib")
-    joblib.dump(best_reg_pipe, "../data/processed/best_regression_model.joblib")
-    
+
+    # Todos os caminhos são relativos à raiz do projeto (PROJECT_ROOT),
+    # então funcionam de forma consistente não importa de onde o script é chamado.
+    processed_dir = os.path.join(PROJECT_ROOT, "data", "processed")
+    os.makedirs(processed_dir, exist_ok=True)
+    joblib.dump(best_clf_pipe, os.path.join(processed_dir, "best_classification_model.joblib"))
+    joblib.dump(best_reg_pipe, os.path.join(processed_dir, "best_regression_model.joblib"))
+
     df_preds = df_2024[["id_municipio", "nome_municipio", "sigla_uf", "nome_regiao", "taxa_alfabetizacao", "meta_alfabetizacao_2030"]].copy()
     df_preds["taxa_real_2024"] = y_reg_test
     df_preds["taxa_prevista_2024"] = best_reg_pipe.predict(X_test)
@@ -158,17 +163,17 @@ def train_and_evaluate_all() -> Dict[str, Any]:
     df_preds["risco_real_2024"] = y_clf_test
     df_preds["risco_predito_2024"] = best_clf_pipe.predict(X_test)
     df_preds["probabilidade_risco"] = best_clf_pipe.predict_proba(X_test)[:, 1]
-    df_preds.to_csv("data/processed/test_predictions_2024.csv", index=False, encoding="utf-8")
-    
+    df_preds.to_csv(os.path.join(processed_dir, "test_predictions_2024.csv"), index=False, encoding="utf-8")
+
     summary = {
         "best_classification_model": best_clf_name,
         "best_regression_model": best_reg_name,
         "classification_results": clf_results,
         "regression_results": reg_results
     }
-    with open("data/processed/evaluation_summary.json", "w", encoding="utf-8") as f:
+    with open(os.path.join(processed_dir, "evaluation_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=4, ensure_ascii=False)
-        
+
     print("\n5. Modelagem concluída com sucesso!")
     print(f"   Melhor Classificador: {best_clf_name} (ROC-AUC: {best_clf_score:.4f})")
     print(f"   Melhor Regressor:     {best_reg_name} (R2: {best_reg_score:.4f})")
