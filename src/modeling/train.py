@@ -4,6 +4,11 @@ Módulo de Treinamento, Otimização e Validação de Modelos Supervisionados
 Tech Challenge - Fase 3 | Pós Tech AI Scientist
 """
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path.cwd().parent))
+
 import os
 import json
 import joblib
@@ -142,9 +147,9 @@ def train_and_evaluate_all() -> Dict[str, Any]:
             best_reg_name = name
             best_reg_pipe = pipe
             
-    os.makedirs("data/processed", exist_ok=True)
-    joblib.dump(best_clf_pipe, "data/processed/best_classification_model.joblib")
-    joblib.dump(best_reg_pipe, "data/processed/best_regression_model.joblib")
+    os.makedirs("../data/processed", exist_ok=True)
+    joblib.dump(best_clf_pipe, "../data/processed/best_classification_model.joblib")
+    joblib.dump(best_reg_pipe, "../data/processed/best_regression_model.joblib")
     
     df_preds = df_2024[["id_municipio", "nome_municipio", "sigla_uf", "nome_regiao", "taxa_alfabetizacao", "meta_alfabetizacao_2030"]].copy()
     df_preds["taxa_real_2024"] = y_reg_test
