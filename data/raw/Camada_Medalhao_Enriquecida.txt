@@ -1,0 +1,202 @@
+# Dados Enriquecidos - Scripts:
+=========================================================================
+Bronze:
+
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.bronze.alfabetizacao_municipio_bronze`
+CLUSTER BY id_municipio AS
+SELECT
+  ano,
+  id_municipio,
+  taxa_alfabetizacao,
+  meta_alfabetizacao_2024,
+  meta_alfabetizacao_2025,
+  meta_alfabetizacao_2026,
+  meta_alfabetizacao_2027,
+  meta_alfabetizacao_2028,
+  meta_alfabetizacao_2029,
+  meta_alfabetizacao_2030,
+  nivel_alfabetizacao,
+  percentual_participacao
+FROM `basedosdados.br_inep_avaliacao_alfabetizacao.meta_alfabetizacao_municipio`
+WHERE rede = 'Municipal';
+
+-- Território (nome, UF, região a partir do id_municipio)
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.bronze.diretorio_municipio_bronze` AS
+SELECT
+  id_municipio,
+  nome,
+  sigla_uf,
+  nome_uf,
+  nome_regiao,
+  capital_uf,
+  amazonia_legal
+FROM `basedosdados.br_bd_diretorios_brasil.municipio`;
+
+-- População por município/ano
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.bronze.populacao_municipio_bronze`
+CLUSTER BY id_municipio AS
+SELECT
+  ano,
+  id_municipio,
+  populacao
+FROM `basedosdados.br_ibge_populacao.municipio`;
+
+-- PIB por município/ano
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.bronze.pib_municipio_bronze`
+CLUSTER BY id_municipio AS
+SELECT
+  ano,
+  id_municipio,
+  pib
+FROM `basedosdados.br_ibge_pib.municipio`;
+
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.bronze.censo_escolar_bronze`
+CLUSTER BY id_municipio AS
+SELECT
+  ano,
+  id_municipio,
+  id_escola,
+  rede,
+  internet,
+  biblioteca,
+  laboratorio_informatica,
+  laboratorio_ciencias,
+  quadra_esportes,
+  agua_potavel,
+  energia_rede_publica,
+  esgoto_rede_publica,
+  quantidade_computador_aluno,
+  quantidade_matricula_fundamental_anos_iniciais,
+  quantidade_docente_fundamental_anos_iniciais
+FROM `basedosdados.br_inep_censo_escolar.escola`
+WHERE rede = 'Municipal';
+
+=============================================================================================
+Silver:
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.silver.alfabetizacao_municipio_silver` AS
+WITH base AS (
+  SELECT
+    SAFE_CAST(ano AS INT64) AS ano,
+    TRIM(id_municipio) AS id_municipio,
+    taxa_alfabetizacao,
+    meta_alfabetizacao_2024,
+    meta_alfabetizacao_2025,
+    meta_alfabetizacao_2026,
+    meta_alfabetizacao_2027,
+    meta_alfabetizacao_2028,
+    meta_alfabetizacao_2029,
+    meta_alfabetizacao_2030,
+    nivel_alfabetizacao,
+    percentual_participacao,
+    ROW_NUMBER() OVER (
+      PARTITION BY ano, id_municipio
+      ORDER BY ano
+    ) AS rn
+  FROM `tech-challenge-fase3-508119.bronze.alfabetizacao_municipio_bronze`
+)
+SELECT * EXCEPT(rn)
+FROM base
+WHERE rn = 1
+  AND ano IS NOT NULL
+  AND id_municipio IS NOT NULL;
+
+-- Território: 1 linha por município (não tem ano, é cadastral)
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.silver.diretorio_municipio_silver` AS
+SELECT DISTINCT
+  TRIM(id_municipio) AS id_municipio,
+  TRIM(nome) AS nome_municipio,
+  UPPER(TRIM(sigla_uf)) AS sigla_uf,
+  TRIM(nome_uf) AS nome_uf,
+  TRIM(nome_regiao) AS nome_regiao,
+  capital_uf,
+  amazonia_legal
+FROM `tech-challenge-fase3-508119.bronze.diretorio_municipio_bronze`
+WHERE id_municipio IS NOT NULL;
+
+-- População: remove duplicatas de ano/município
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.silver.populacao_municipio_silver` AS
+WITH base AS (
+  SELECT
+    SAFE_CAST(ano AS INT64) AS ano,
+    TRIM(id_municipio) AS id_municipio,
+    populacao,
+    ROW_NUMBER() OVER (PARTITION BY ano, id_municipio ORDER BY ano) AS rn
+  FROM `tech-challenge-fase3-508119.bronze.populacao_municipio_bronze`
+)
+SELECT ano, id_municipio, populacao
+FROM base
+WHERE rn = 1 AND ano IS NOT NULL AND id_municipio IS NOT NULL;
+
+-- PIB: mesma lógica, + PIB per capita já calculado
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.silver.pib_municipio_silver` AS
+WITH base AS (
+  SELECT
+    SAFE_CAST(ano AS INT64) AS ano,
+    TRIM(id_municipio) AS id_municipio,
+    pib,
+    ROW_NUMBER() OVER (PARTITION BY ano, id_municipio ORDER BY ano) AS rn
+  FROM `tech-challenge-fase3-508119.bronze.pib_municipio_bronze`
+)
+SELECT ano, id_municipio, pib
+FROM base
+WHERE rn = 1 AND ano IS NOT NULL AND id_municipio IS NOT NULL;
+
+CREATE OR REPLACE TABLE `tech-challenge-fase3-508119.silver.censo_escolar_municipio_silver` AS
+SELECT
+  ano,
+  id_municipio,
+  COUNT(DISTINCT id_escola) AS qtd_escolas,
+  SUM(quantidade_matricula_fundamental_anos_iniciais) AS matriculas_anos_iniciais,
+  SUM(quantidade_docente_fundamental_anos_iniciais) AS docentes_anos_iniciais,
+  SAFE_DIVIDE(
+    SUM(quantidade_matricula_fundamental_anos_iniciais),
+    NULLIF(SUM(quantidade_docente_fundamental_anos_iniciais), 0)
+  ) AS razao_aluno_docente,
+  AVG(internet) AS pct_escolas_internet,
+  AVG(biblioteca) AS pct_escolas_biblioteca,
+  AVG(laboratorio_informatica) AS pct_escolas_lab_informatica,
+  AVG(agua_potavel) AS pct_escolas_agua_potavel,
+  AVG(energia_rede_publica) AS pct_escolas_energia_publica,
+  AVG(esgoto_rede_publica) AS pct_escolas_esgoto_publico,
+  AVG(quadra_esportes) AS pct_escolas_quadra_esportes,
+  SAFE_DIVIDE(
+    SUM(quantidade_computador_aluno),
+    NULLIF(SUM(quantidade_matricula_fundamental_anos_iniciais), 0)
+  ) AS computadores_por_aluno
+FROM `tech-challenge-fase3-508119.bronze.censo_escolar_bronze`
+GROUP BY ano, id_municipio;
+
+=======================================
+Gold:
+CREATE OR REPLACE VIEW `SEU-PROJECT-ID.gold.alfabetizacao_municipio_gold` AS
+SELECT
+  ano,
+  id_municipio,
+  taxa_alfabetizacao,
+  meta_alfabetizacao_2024,
+  meta_alfabetizacao_2025,
+  meta_alfabetizacao_2026,
+  meta_alfabetizacao_2027,
+  meta_alfabetizacao_2028,
+  meta_alfabetizacao_2029,
+  meta_alfabetizacao_2030,
+  nivel_alfabetizacao,
+  percentual_participacao,
+
+  (taxa_alfabetizacao - meta_alfabetizacao_2030) AS gap_meta_2030,
+
+  CASE
+    WHEN taxa_alfabetizacao IS NULL OR meta_alfabetizacao_2030 IS NULL THEN 'sem_dado'
+    WHEN taxa_alfabetizacao < meta_alfabetizacao_2030 THEN 'abaixo_meta_2030'
+    ELSE 'acima_meta_2030'
+  END AS status_meta_2030,
+
+  CASE
+    WHEN taxa_alfabetizacao IS NULL THEN 'sem_dado'
+    WHEN taxa_alfabetizacao < 40 THEN 'muito_baixo'
+    WHEN taxa_alfabetizacao < 60 THEN 'baixo'
+    WHEN taxa_alfabetizacao < 80 THEN 'adequado_parcial'
+    ELSE 'adequado_total'
+  END AS classe_taxa
+
+FROM `SEU-PROJECT-ID.silver.alfabetizacao_municipio_silver`;

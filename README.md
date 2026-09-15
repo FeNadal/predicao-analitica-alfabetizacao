@@ -1,35 +1,33 @@
 # Tech Challenge – Fase 3: Predição e Inteligência Analítica para Alfabetização no Brasil
 ### Pós-Graduação em Inteligência Artificial / AI Scientist
 
-[![Python Version](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/Fase-3%20Conclu%C3%ADda-green.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-## 📌 Contexto do Problema
+## 1. Contexto do Problema
 
 A alfabetização até o 2º ano do Ensino Fundamental é um dos indicadores mais sensíveis do
 desenvolvimento educacional brasileiro. Apesar de metas nacionais e estaduais bem definidas,
 municípios apresentam disparidades expressivas de desempenho, muitas vezes associadas a fatores
 territoriais, socioeconômicos e de infraestrutura escolar que não são óbvios à primeira vista.
 
-Este projeto usa a **camada Gold** construída no Tech Challenge da Fase 2 — que integra o
+Este projeto usa a **camada Gold** construída no Tech Challenge da Fase 2, que integra o
 Indicador Criança Alfabetizada, metas nacionais/estaduais/municipais, dados territoriais,
-socioeconômicos, educacionais complementares e populacionais — para investigar esses padrões e
+socioeconômicos, educacionais complementares e populacionais, para investigar esses padrões e
 construir modelos preditivos capazes de apoiar decisões de política pública.
 
-## 🎯 Objetivo Analítico
+## 2. Objetivo Analítico
 
 1. Entender, via Análise Exploratória de Dados (EDA), quais fatores se associam à taxa de
    alfabetização municipal.
-2. Construir e validar modelos supervisionados de **classificação** (município em risco
-   educacional ou não) e **regressão** (taxa de alfabetização prevista).
+2. Construir e validar modelos supervisionados de classificação (município em risco
+   educacional ou não) e regressão (taxa de alfabetização prevista).
 3. Interpretar os modelos (Feature Importance e SHAP) para identificar as variáveis mais
    relevantes e traduzir isso em recomendações acionáveis para gestores públicos.
 
-## 📊 Descrição da Base
+## 3. Descrição da Base
 
-- **Fonte**: camada Gold produzida no Tech Challenge Fase 2, disponível em
+- **Fonte-base**: camada Gold produzida no Tech Challenge Fase 2, disponível em
   [jadeferreira/tech-challenge-alfabetizacao](https://github.com/jadeferreira/tech-challenge-alfabetizacao).
+- **Enriquecimento**: a base da Fase 2 foi complementada com fontes externas adicionais para
+  ampliar a cobertura de variáveis socioeconômicas e educacionais (`Camada_Medalhao_Enriquecida.txt`)
 - **Volume**: `Data.csv` com 10.704 registros, cobrindo os anos de **2023 e 2024**.
 - **Granularidade**: um registro por município/ano.
 - **Grupos de variáveis**: identificadores territoriais, dados temporais, socioeconômicos
@@ -38,17 +36,17 @@ construir modelos preditivos capazes de apoiar decisões de política pública.
   energia, quadra), e indicadores de avaliação/metas (taxa de alfabetização, metas 2024–2030,
   nível de alfabetização, status da meta 2030).
 
-> ⚠️ A pasta `data/` está no `.gitignore` e **não é versionada** neste repositório (arquivo
-> pesado). Para rodar o projeto, baixe o `Data.csv` a partir do repositório da Fase 2 linkado
-> acima e salve em `data/raw/Data.csv`.
+> A pasta `data/` é versionada neste repositório: `data/raw/Data.csv` já contém a base
+> consolidada (Gold da Fase 2 + fontes externas). `data/processed/` recebe os artefatos gerados
+> pela pipeline (modelos, predições e resumo de métricas) e não precisa ser criada manualmente.
 
-## 📁 Estrutura do Repositório
+## 4. Estrutura do Repositório
 
 ```text
 tech-challenge-fase3/
 │
 ├── data/
-│   ├── raw/                          # Data.csv (camada Gold, não versionado)
+│   ├── raw/                          # Data.csv (camada Gold + fontes externas)
 │   └── processed/                    # Modelos treinados e predições geradas pela pipeline
 │
 ├── notebooks/
@@ -88,12 +86,12 @@ tech-challenge-fase3/
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 5. Como Executar o Projeto
 
 ### 1. Clonar e instalar dependências
 ```bash
-git clone <url-do-repositorio>
-cd tech-challenge-fase3
+git clone https://github.com/FeNadal/predicao-analitica-alfabetizacao
+cd predicao-analitica-alfabetizacao
 
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -102,19 +100,14 @@ source venv/bin/activate     # Linux/Mac
 pip install -r requirements.txt
 ```
 
-### 2. Obter a base de dados
-Baixe o `Data.csv` do repositório da Fase 2
-([jadeferreira/tech-challenge-alfabetizacao](https://github.com/jadeferreira/tech-challenge-alfabetizacao))
-e salve em `data/raw/Data.csv`.
-
-### 3. Rodar a Análise Exploratória (EDA)
+### 2. Rodar a Análise Exploratória (EDA)
 ```bash
 python src/eda_runner.py
 ```
 Valida as variáveis, roda os testes estatísticos de hipóteses e gera os gráficos `01`–`08` em
 `images/`.
 
-### 4. Treinar e validar os modelos supervisionados
+### 3. Treinar e validar os modelos supervisionados
 ```bash
 python -m src.modeling.train
 ```
@@ -126,19 +119,19 @@ Executa a engenharia de atributos, separa o treino (2023) do teste (2024) de for
 - `data/processed/test_predictions_2024.csv`
 - `data/processed/evaluation_summary.json` (métricas completas de todos os modelos testados)
 
-### 5. Gerar interpretabilidade e gráficos de avaliação
+### 4. Gerar interpretabilidade e gráficos de avaliação
 ```bash
 python -m src.evaluation.interpretability
 ```
 Gera matriz de confusão, curva ROC, Feature Importance e o gráfico SHAP (`images/09`–`13`), além
 de `data/processed/top_features.json`.
 
-### 6. Predizer o risco de um município específico
+### 5. Predizer o risco de um município específico
 ```bash
 python -m src.modeling.predict
 ```
 
-### 7. Explorar os notebooks interativamente
+### 6. Explorar os notebooks interativamente
 ```bash
 jupyter lab notebooks/01_analise_exploratoria.ipynb
 jupyter lab notebooks/02_modelagem_supervisionada.ipynb
@@ -146,7 +139,7 @@ jupyter lab notebooks/02_modelagem_supervisionada.ipynb
 
 ---
 
-## 🧪 Etapas de Modelagem
+## 6. Etapas de Modelagem
 
 1. **Engenharia de atributos** (`features.py`): índices compostos de infraestrutura básica e de
    recursos pedagógicos, log-transformações de população/PIB, imputação de PIB 2024 ausente via
@@ -166,7 +159,7 @@ jupyter lab notebooks/02_modelagem_supervisionada.ipynb
    (regressão) com 5 folds sobre o treino, seguidos de avaliação final no conjunto de teste de
    2024.
 
-## ⚙️ Escolha do Algoritmo
+## 7. Escolha do Algoritmo
 
 Foram comparados três modelos para cada tarefa, e o melhor de cada grupo foi selecionado
 automaticamente pela métrica de teste (ROC-AUC para classificação, R² para regressão):
@@ -178,7 +171,12 @@ automaticamente pela métrica de teste (ROC-AUC para classificação, R² para r
 
 O modelo vencedor de cada tarefa é salvo automaticamente em `data/processed/*.joblib`.
 
-## 📈 Métricas de Avaliação
+> **Nota**: `HistGradientBoosting` é a implementação nativa de gradient boosting do
+> scikit-learn (inspirada no algoritmo do LightGBM), não o pacote XGBoost. Foi a opção escolhida
+> por já vir embutida no scikit-learn, sem dependência externa adicional, com desempenho
+> competitivo para o porte da base (~10 mil registros).
+
+## 8. Métricas de Avaliação
 
 - **Classificação**: acurácia, acurácia balanceada, precisão, recall, F1-score, ROC-AUC e
   matriz de confusão.
@@ -188,7 +186,7 @@ Os valores exatos de cada modelo (validação cruzada e teste) ficam registrados
 `data/processed/evaluation_summary.json` após rodar `src/modeling/train.py` — atualize esta
 seção do README com os números do seu run mais recente antes da entrega final.
 
-## 🔍 Interpretação dos Resultados
+## 9. Interpretação dos Resultados
 
 A interpretabilidade é feita em duas camadas, geradas por `src/evaluation/interpretability.py`:
 - **Feature Importance** nativa do modelo vencedor (`images/11_feature_importance.png`).
@@ -198,7 +196,7 @@ A interpretabilidade é feita em duas camadas, geradas por `src/evaluation/inter
 *(Preencha aqui, após rodar a pipeline, quais variáveis apareceram no topo do ranking e como
 isso se conecta aos achados da EDA — ex.: infraestrutura escolar, razão aluno/docente, região.)*
 
-## 💡 Principais Insights da Análise Exploratória
+## 10. Principais Insights da Análise Exploratória
 
 1. **Evolução Positiva Nacional**: a taxa média de alfabetização subiu de **60,48% em 2023**
    para **63,04% em 2024**, com **67,6% dos municípios** registrando avanço.
@@ -211,7 +209,7 @@ isso se conecta aos achados da EDA — ex.: infraestrutura escolar, razão aluno
    alfabetização (rₛ = −0,15, p < 10⁻²⁷).
 5. **O Benchmark do Ceará**: lidera nacionalmente com **90,4%** de taxa média em 2024.
 
-## ⚠️ Limitações do Projeto
+## 11. Limitações do Projeto
 
 - A granularidade é municipal, não individual — os modelos apoiam priorização de políticas por
   município, não avaliam ou rotulam alunos ou escolas específicas.
@@ -222,7 +220,7 @@ isso se conecta aos achados da EDA — ex.: infraestrutura escolar, razão aluno
 - Dados socioeconômicos regionais (PIB) parcialmente ausentes em 2024 foram estimados por
   projeção simples a partir de 2023, o que introduz incerteza adicional nesses casos.
 
-## 🏛️ Aplicação Prática para Políticas Públicas
+## 12. Aplicação Prática para Políticas Públicas
 
 Os modelos e o ranking de importância de variáveis permitem:
 - Priorizar investimento em infraestrutura escolar (saneamento, bibliotecas) nos municípios e
@@ -232,7 +230,7 @@ Os modelos e o ranking de importância de variáveis permitem:
 - Usar `src/modeling/predict.py` para gerar diagnósticos pontuais por município, como insumo
   para reuniões com gestores e equipes pedagógicas.
 
-## 🔮 Possíveis Evoluções Futuras
+## 13. Possíveis Evoluções Futuras
 
 - Incorporar novas fontes externas (Censo Escolar, FUNDEB, Atlas do Desenvolvimento Humano,
   PNAD, Cadastro Único) para enriquecer o conjunto de preditores.
@@ -241,7 +239,7 @@ Os modelos e o ranking de importância de variáveis permitem:
   validação temporal mais robusta.
 - Empacotar a inferência (`predict.py`) como uma API ou dashboard para uso direto por gestores.
 
-## 🛡️ Tratamento de Data Leakage
+## 14. Tratamento de Data Leakage
 
 Colunas isoladas e descartadas do conjunto de preditores $X$:
 - `gap_meta_2030`: relação determinística direta ($Taxa - Meta_{2030}$).
@@ -252,6 +250,11 @@ Colunas isoladas e descartadas do conjunto de preditores $X$:
 
 ---
 
-## 👥 Equipe
+## 👥 Integrantes do Grupo
 
-Projeto desenvolvido para o **Tech Challenge - Fase 3 (AI Scientist)**.
+- Ana Beatriz Porto Pereira — RM 372544
+- Jade Ferreira — RM 373208
+- Felipe Nadal de Oliveira — RM 372547
+- Winny Tavares — RM 371471
+
+Projeto desenvolvido para o **Tech Challenge - Fase 3 (AI Scientist)**, Pós-Graduação FIAP.
